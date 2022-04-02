@@ -11,45 +11,66 @@ const {
     assertResponse
 } = require('./stubs/messageservice.stubs');
 
-// REMOVE THE BELOW CODE BEFORE START THE EXERCISE
+describe('Send message', function(){
 
-function startAllNodes() {
-    startClientPC();
-    const earthToken = startEarthServer();
-    const marsToken = startMarsServer();
-    startSatelite();
-    return {
-        earth: earthToken,
-        mars: marsToken,
-    }
-}
-
-function stopAllNodes(){
-    stopMarsServer();
-    stopEarthServer();
-    stopSatelite();
-    stopClientPC();
-}
-
-describe('Message Sending', function () {
-    it('should send message to Mars without error', function () {
-        let tokens = startAllNodes();
-        const response = sendMessage('Hello', 'Mars', tokens.mars);
-        assertResponse(response, 'Success');
-        stopAllNodes()
+    before('prepare token', function(){
+        getToken = function (){
+            const earthToken = startEarthServer();
+            const marsToken = startMarsServer();
+            return {
+                mars: marsToken,
+                earth: earthToken,
+            }
+        };
+    });   
+    
+    beforeEach('start nodes', function(){
+        startClientPC();
+        startSatelite();        
+        getToken();       
     });
-
-    it('should send message to Earth without error', function () {
-        let tokens = startAllNodes();
-        const response = sendMessage('Hello', 'Earth', tokens.earth);
-        assertResponse(response, 'Success');
-        stopAllNodes()
+    afterEach('stop nodes', function(){
+        stopSatelite();
+        stopClientPC();
+        stopEarthServer();
+        stopMarsServer()
     });
-
-    it('should send message to Earth with "Security Error"', function () {
-        startAllNodes();
-        const response = sendMessage('Hello', 'Earth', 'X0000');
-        assertResponse(response, 'Security Error');
-        stopAllNodes()
+    context('message to Earth', function(){
+        
+        it('should send successful message to Earth', function(){
+            const token = getToken().earth
+            const response = sendMessage('Hello', 'Earth', token);
+            assertResponse(response, 'Success')
+        });
+        it('should send message with invalid token', function(){
+            const response = sendMessage('Hello', 'Earth', 'X000');
+            assertResponse(response, 'Security Error')
+        });
+        
+        
     });
+    context('message to Mars', function(){
+        it('should send successful message to Mars', function(){
+            const token = getToken().mars
+            const response = sendMessage('Hello', 'Mars', token);
+            assertResponse(response, 'Success')
+        });
+        it('should send message with invalid token', function(){            
+            const response = sendMessage('Hello', 'Mars', 'X000');
+            assertResponse(response, 'Security Error')
+        });
+        it('should send message with valid token and stopped satellite', function(){
+            const token = getToken().mars;
+            stopSatelite();
+            const response = sendMessage('Hello', 'Mars', token);
+            assertResponse(response, 'Service is unavailable')
+        });
+        it('should send message with invalid token and stopped satellite', function(){                        
+            stopSatelite();
+            const response = sendMessage('Hello', 'Mars', 'X000');            
+            assertResponse(response, 'Service is unavailable')
+        })
+
+    })
 })
+  
